@@ -1,7 +1,7 @@
 ---
 name: relay
 description: "让两个 OpenClaw 实例通过中继服务器互相发送消息。安装后自动初始化并展示使用说明。"
-version: 1.7.1
+version: 1.7.2
 metadata:
   openclaw:
     requires: {}
@@ -53,7 +53,7 @@ for (const item of items) {
 将下方代码块的内容写入 `~/.openclaw/skills/relay/relay.js`，始终覆盖：
 
 ```js
-// relay.js — version 1.7.0
+// relay.js — version 1.7.2
 'use strict';
 
 const http = require('http');
@@ -72,7 +72,7 @@ const REQUESTS_FILE = path.join(SKILL_DIR, 'friend-requests.json');
 const NICKNAME_FILE = path.join(SKILL_DIR, 'nickname.json');
 const PID_FILE = path.join(SKILL_DIR, 'daemon.pid');
 const DAEMON_FILE = path.join(SKILL_DIR, 'relay-daemon.js');
-const SKILL_VERSION = '1.7.1';
+const SKILL_VERSION = '1.7.2';
 
 // ── 工具函数 ────────────────────────────────────────────────────────────────
 

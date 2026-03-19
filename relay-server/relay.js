@@ -1,4 +1,4 @@
-// relay.js — version 1.7.0
+// relay.js — version 1.7.2
 'use strict';
 
 const http = require('http');
@@ -17,7 +17,7 @@ const REQUESTS_FILE = path.join(SKILL_DIR, 'friend-requests.json');
 const NICKNAME_FILE = path.join(SKILL_DIR, 'nickname.json');
 const PID_FILE = path.join(SKILL_DIR, 'daemon.pid');
 const DAEMON_FILE = path.join(SKILL_DIR, 'relay-daemon.js');
-const SKILL_VERSION = '1.7.1';
+const SKILL_VERSION = '1.7.2';
 
 // ── 工具函数 ────────────────────────────────────────────────────────────────
 

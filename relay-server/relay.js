@@ -1,4 +1,4 @@
-// relay.js — version 1.7.3
+// relay.js — version 1.7.4
 'use strict';
 
 const http = require('http');
@@ -17,7 +17,7 @@ const REQUESTS_FILE = path.join(SKILL_DIR, 'friend-requests.json');
 const NICKNAME_FILE = path.join(SKILL_DIR, 'nickname.json');
 const PID_FILE = path.join(SKILL_DIR, 'daemon.pid');
 const DAEMON_FILE = path.join(SKILL_DIR, 'relay-daemon.js');
-const SKILL_VERSION = '1.7.3';
+const SKILL_VERSION = '1.7.4';
 
 // ── 工具函数 ────────────────────────────────────────────────────────────────
 
@@ -295,30 +295,60 @@ setInterval(poll, INTERVAL_MS);
 
 // ── Setup & AutoUpdate ───────────────────────────────────────────────────────
 
-async function setup(intervalMs = 5000) {
+// 获取当前完整状态（服务器连通性、daemon、版本、未读消息数）
+async function status() {
   let serverOk = false;
   try { const r = await request('GET', `${RELAY_SERVER_URL}/health`); serverOk = r && r.ok === true; } catch (_) {}
 
+  let daemonLine = '❌ 未运行';
+  if (fs.existsSync(PID_FILE)) {
+    const pid = parseInt(fs.readFileSync(PID_FILE, 'utf-8').trim());
+    try { process.kill(pid, 0); daemonLine = `✅ 运行中 (pid ${pid})`; } catch (_) {
+      const d = startDaemon(); daemonLine = `✅ 已重启 (pid ${d.pid})`;
+    }
+  } else {
+    const d = startDaemon(); daemonLine = `✅ 已启动 (pid ${d.pid})`;
+  }
+
+  const log = readJSON(LOG_FILE, []);
+  const unread = log.filter(m => !m.read).length;
+  const requests = readJSON(REQUESTS_FILE, []).filter(r => r.direction === 'incoming' && r.status === 'pending');
+
+  const lines = [
+    '─── 📡 Relay 状态 ───────────────────────────',
+    `版本:       v${SKILL_VERSION}`,
+    `我的 ID:    ${MY_USER_ID}`,
+    `昵称:       ${getNickname()}`,
+    `服务器:     ${serverOk ? '✅ 正常' : '❌ 无法连接'} (${RELAY_SERVER_URL})`,
+    `后台轮询:   ${daemonLine}`,
+    `未读消息:   ${unread > 0 ? `🔴 ${unread} 条` : '✅ 无'}`,
+    `好友申请:   ${requests.length > 0 ? `📬 ${requests.length} 条待处理` : '✅ 无'}`,
+    '────────────────────────────────────────────',
+  ];
+  return lines.join('\n');
+}
+
+async function setup(intervalMs = 5000) {
   const daemon = startDaemon(intervalMs);
   const daemonLine = daemon.status === 'started'
     ? `✅ 已启动 (pid ${daemon.pid}, 每 ${intervalMs / 1000}s 轮询)`
     : `✅ 已在运行 (pid ${daemon.pid})`;
 
+  let serverOk = false;
+  try { const r = await request('GET', `${RELAY_SERVER_URL}/health`); serverOk = r && r.ok === true; } catch (_) {}
+
   return [
-    '📡 Relay Skill 已就绪',
-    '',
-    `• 我的 ID:     ${MY_USER_ID}`,
-    `• 我的昵称:   ${getNickname()}`,
-    `• 服务器:      ${RELAY_SERVER_URL}`,
-    `• 连接状态:    ${serverOk ? '✅ 正常' : '❌ 无法连接'}`,
-    `• 后台轮询:    ${daemonLine}`,
-    '',
-    '─── 使用方式 ───────────────────────────────',
+    '─── 📡 Relay Skill 安装完成 ─────────────────',
+    `版本:       v${SKILL_VERSION}`,
+    `我的 ID:    ${MY_USER_ID}`,
+    `昵称:       ${getNickname()}`,
+    `服务器:     ${serverOk ? '✅ 正常' : '❌ 无法连接'} (${RELAY_SERVER_URL})`,
+    `后台轮询:   ${daemonLine}`,
+    '────────────────────────────────────────────',
     '发消息: "发消息给 <ID>，内容是 <内容>"',
     '好友:   "添加好友 <ID>" / "查看好友" / "查看消息"',
-    '昵称:   "设置昵称 <名字>"',
-    '帮助:   "帮助"',
-    '─────────────────────────────────────────────',
+    '昵称:   "设置昵称 <名字>" | 帮助: "帮助"',
+    '────────────────────────────────────────────',
   ].join('\n');
 }
 
@@ -338,21 +368,12 @@ async function autoUpdate() {
     }
   } catch (_) {}
 
-  if (updated.length > 0) {
-    let serverOk = false;
-    try { const r = await request('GET', `${RELAY_SERVER_URL}/health`); serverOk = r && r.ok === true; } catch (_) {}
-    let daemonStatus = '❓ 未知';
-    if (fs.existsSync(PID_FILE)) {
-      const pid = parseInt(fs.readFileSync(PID_FILE, 'utf-8').trim());
-      try { process.kill(pid, 0); daemonStatus = `✅ 运行中 (pid ${pid})`; } catch (_) {
-        const d = startDaemon(); daemonStatus = `✅ 已重启 (pid ${d.pid})`;
-      }
-    } else {
-      const d = startDaemon(); daemonStatus = `✅ 已启动 (pid ${d.pid})`;
-    }
-    return { updated, report: ['📡 Relay Skill 已更新：' + updated.join(', '), `• 服务器: ${serverOk ? '✅' : '❌'}`, `• 后台轮询: ${daemonStatus}`, '（重启对话后新版本生效）'].join('\n') };
-  }
-  return { updated, report: '' };
+  // 不管有没有更新，都确保 daemon 在跑，并返回完整状态
+  const statusReport = await status();
+  const updateLine = updated.length > 0
+    ? `🔄 已更新：${updated.join(', ')}（重启对话后新版本生效）`
+    : '✅ 已是最新版本';
+  return { updated, report: [updateLine, statusReport].join('\n') };
 }
 
 // ── Help & Version ───────────────────────────────────────────────────────────
@@ -462,7 +483,7 @@ module.exports = {
   sendFriendRequest, acceptFriendRequest, rejectFriendRequest, removeFriend,
   getNickname, setNickname,
   throwBottle, pickBottle, replyToBottle,
-  startDaemon, setup, autoUpdate,
+  startDaemon, setup, autoUpdate, status,
   version, help,
   MY_USER_ID, RELAY_SERVER_URL, SKILL_VERSION,
 };

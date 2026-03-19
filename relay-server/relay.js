@@ -1,4 +1,4 @@
-// relay.js — version 1.7.2
+// relay.js — version 1.7.3
 'use strict';
 
 const http = require('http');
@@ -17,7 +17,7 @@ const REQUESTS_FILE = path.join(SKILL_DIR, 'friend-requests.json');
 const NICKNAME_FILE = path.join(SKILL_DIR, 'nickname.json');
 const PID_FILE = path.join(SKILL_DIR, 'daemon.pid');
 const DAEMON_FILE = path.join(SKILL_DIR, 'relay-daemon.js');
-const SKILL_VERSION = '1.7.2';
+const SKILL_VERSION = '1.7.3';
 
 // ── 工具函数 ────────────────────────────────────────────────────────────────
 
@@ -190,8 +190,18 @@ function readInbox() {
 }
 
 // 查看所有消息历史，标注已读/未读和好友/陌生人，看完后标为已读
-function checkInbox() {
+// 同时直接从服务器 poll 一次，合并到本地记录（不依赖 daemon 是否运行）
+async function checkInbox() {
   try {
+    // 先从服务器拉新消息写入本地
+    try {
+      const fresh = await pollMessages(MY_USER_ID);
+      if (Array.isArray(fresh) && fresh.length > 0) {
+        const log = readJSON(LOG_FILE, []);
+        const newMsgs = fresh.map(m => ({ ...m, read: false }));
+        writeJSON(LOG_FILE, [...log, ...newMsgs].slice(-200));
+      }
+    } catch (_) {}
     const msgs = readJSON(LOG_FILE, []);
     // 先拿快照（read 字段为调用前的状态，用于正确显示未读/已读）
     const snapshot = msgs.map(m => ({ ...m }));

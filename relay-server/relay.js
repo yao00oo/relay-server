@@ -8,7 +8,7 @@ const path = require('path');
 const os = require('os');
 const { URL } = require('url');
 
-const RELAY_SERVER_URL = process.env.RELAY_SERVER_URL || 'https://britannica-prime-typical-stock.trycloudflare.com';
+const RELAY_SERVER_URL = process.env.RELAY_SERVER_URL || 'https://mary-polished-benefit-rev.trycloudflare.com';
 const MY_USER_ID = process.env.MY_USER_ID || process.env.OPENCLAW_AGENT_ID || os.hostname();
 const SKILL_DIR = __dirname;
 const LOG_FILE = path.join(SKILL_DIR, 'inbox-log.json');

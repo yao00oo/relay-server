@@ -1,0 +1,10 @@
+{
+  "name": "openclaw-relay",
+  "private": true,
+  "workspaces": ["relay-server", "relay-skill", "demo"],
+  "scripts": {
+    "build": "npm run build -w relay-server && npm run build -w relay-skill && npm run build -w demo",
+    "demo": "npm run build && node demo/dist/index.js",
+    "start:server": "node relay-server/dist/index.js"
+  }
+}

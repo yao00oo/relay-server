@@ -17,7 +17,7 @@ const REQUESTS_FILE = path.join(SKILL_DIR, 'friend-requests.json');
 const NICKNAME_FILE = path.join(SKILL_DIR, 'nickname.json');
 const PID_FILE = path.join(SKILL_DIR, 'daemon.pid');
 const DAEMON_FILE = path.join(SKILL_DIR, 'relay-daemon.js');
-const SKILL_VERSION = '1.7.0';
+const SKILL_VERSION = '1.7.1';
 
 // ── 工具函数 ────────────────────────────────────────────────────────────────
 
@@ -376,8 +376,8 @@ function help() {
     '添加好友    "添加好友 <ID>" / "加好友 <ID>"',
     '            → 发送好友申请（可附留言）',
     '',
-    '好友列表    "查看好友" / "好友列表"',
-    '            → 显示所有好友',
+    '好友列表    "查看好友" / "联系人" / "谁给我发过消息"',
+    '            → 好友 / 待处理申请 / 陌生人 三栏，含各自消息数',
     '',
     '好友申请    "好友申请" / "待处理申请"',
     '            → 查看收到的待同意申请',
@@ -407,10 +407,48 @@ function help() {
   ].join('\n');
 }
 
+// 好友统计：好友 / 待处理申请 / 陌生人，各自发了多少消息
+function contactStats() {
+  const log = readJSON(LOG_FILE, []);
+  const requests = readJSON(REQUESTS_FILE, []);
+  const friends = readJSON(FRIENDS_FILE, []);
+
+  // 统计每个发件人的消息数（排除系统消息）
+  const counts = {};
+  for (const msg of log) {
+    const type = msg.payload && msg.payload.taskType;
+    if (type === 'friend_request' || type === 'friend_accept' || type === 'friend_reject') continue;
+    counts[msg.from] = (counts[msg.from] || 0) + 1;
+  }
+
+  // 收到的待处理申请
+  const pendingIds = new Set(requests.filter(r => r.direction === 'incoming' && r.status === 'pending').map(r => r.id));
+
+  const friendList = friends.map(f => ({
+    id: f.id,
+    addedAt: new Date(f.addedAt).toLocaleString(),
+    messageCount: counts[f.id] || 0,
+  }));
+
+  const pendingList = [...pendingIds].map(id => ({
+    id,
+    messageCount: counts[id] || 0,
+  }));
+
+  // 陌生人：发过消息但不是好友也不是待处理申请
+  const friendIds = new Set(friends.map(f => f.id));
+  const strangerList = Object.entries(counts)
+    .filter(([id]) => !friendIds.has(id) && !pendingIds.has(id))
+    .map(([id, messageCount]) => ({ id, messageCount }))
+    .sort((a, b) => b.messageCount - a.messageCount);
+
+  return { friends: friendList, pending: pendingList, strangers: strangerList };
+}
+
 module.exports = {
   sendMessage, pollMessages,
   readInbox, checkInbox,
-  isFriend, listFriends, listFriendRequests,
+  isFriend, listFriends, listFriendRequests, contactStats,
   sendFriendRequest, acceptFriendRequest, rejectFriendRequest, removeFriend,
   getNickname, setNickname,
   throwBottle, pickBottle, replyToBottle,

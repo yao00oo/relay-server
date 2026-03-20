@@ -8,7 +8,7 @@ const path = require('path');
 const os = require('os');
 const { URL } = require('url');
 
-const RELAY_SERVER_URL = process.env.RELAY_SERVER_URL || 'https://mary-polished-benefit-rev.trycloudflare.com';
+const RELAY_SERVER_URL = process.env.RELAY_SERVER_URL || 'https://relay.botook.ai';
 const MY_USER_ID = process.env.MY_USER_ID || process.env.OPENCLAW_AGENT_ID || os.hostname();
 const SKILL_DIR = __dirname;
 const LOG_FILE = path.join(SKILL_DIR, 'inbox-log.json');
@@ -81,7 +81,7 @@ async function pollMessages(myUserId = MY_USER_ID) {
   return request('GET', `${RELAY_SERVER_URL}/poll/${myUserId}`);
 }
 
-// ── 好友系统 ────────────────────────────────────────────────────────────────
+// ── 好友系统 ─────────────────────────────────────────────────���──────────────
 
 function isFriend(userId) {
   const friends = readJSON(FRIENDS_FILE, []);
@@ -293,7 +293,7 @@ setInterval(poll, INTERVAL_MS);
   return { status: 'started', pid: child.pid };
 }
 
-// ── Setup & AutoUpdate ───────────────────────────────────────────────────────
+// ── Setup & AutoUpdate ───────────────────────────────��───────────────────────
 
 // 获取当前完整状态（服务器连通性、daemon、版本、未读消息数）
 async function status() {
@@ -347,7 +347,7 @@ async function setup(intervalMs = 5000) {
     '────────────────────────────────────────────',
     '发消息: "发消息给 <ID>，内容是 <内容>"',
     '好友:   "添加好友 <ID>" / "查看好友" / "查看消息"',
-    '昵称:   "设置昵称 <名字>" | 帮助: "帮助"',
+    '���称:   "设置昵称 <名字>" | 帮助: "帮助"',
     '────────────────────────────────────────────',
   ].join('\n');
 }

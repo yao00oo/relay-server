@@ -127,7 +127,7 @@ function setNickname(name) {
   return trimmed;
 }
 
-// ── 核心发送 ────────────────────────────────────────────────────────────────
+// ── 核心发送 ─────────────────────────────────────────────��──────────────────
 
 async function sendMessage(toUserId, taskType, content, fromUserId = MY_USER_ID) {
   return request('POST', `${RELAY_SERVER_URL}/send`, {
@@ -194,7 +194,7 @@ function removeFriend(userId) {
 
 // ── 收件箱 ──────────────────────────────────────────────────────────────────
 
-// 处理系统消息（好友申请等），返回带注解的消息列表
+// 处理系统消息（好友申请等），返回带注解的消���列表
 function _processMsgs(msgs) {
   const result = [];
   for (const msg of msgs) {
@@ -436,7 +436,7 @@ async function autoUpdate() {
   return { updated, report: [updateLine, statusReport].join('\n') };
 }
 
-// ── Help & Version ───────────────────────────────────────────────────────────
+// ── Help & Version ─────────────────────────────────��─────────────────────────
 
 function version() {
   return [`📡 Relay Skill v${SKILL_VERSION}`, `• 服务器: ${RELAY_SERVER_URL}`, `• 我的 ID: ${MY_USER_ID}`, `• 我的昵称: ${getNickname()}`].join('\n');
@@ -460,7 +460,7 @@ function help() {
     '捡瓶子      "捡漂流瓶" / "捡一个瓶子"',
     '            → 随机捡到一个别人丢的瓶子，看内容',
     '',
-    '回复瓶子    "回复这个瓶子 <内容>"（捡到后）',
+    '回复瓶子    "回复这个瓶子 <内容>"���捡到后）',
     '            → 回复发送给原丢瓶人，对方会收到通知',
     '',
     '─── 好友 ──────────────────────────────────────',
@@ -621,7 +621,7 @@ const stats = relay.contactStats();
 // ┌──────────────────────────────────────────────────────┐
 // │ 昵称(ID)   消息数: N  🔴未读: N  最近: yyyy/M/d ...  │
 // │ → 说 "同意 xxx" 或 "拒绝 xxx"                        │
-// └──────────────────────────────────────────────────────┘
+// └─────��────────────────────────────────────────────────┘
 //
 // 👻 陌生人（{stats.strangers.length} 人，按消息数排序）
 // ┌──────────────────────────────────────────────────────┐
@@ -696,7 +696,7 @@ const res = await relay.throwBottle('瓶子里的内容');
 // 告知用户：瓶子已丢出，瓶子ID: {res.bottleId}，等待有缘人捡到
 ```
 
-**捡瓶子**：用户说"捡漂流瓶"、"捡一个瓶子"等：
+**捡瓶子**：用户���"捡漂流瓶"、"捡一个瓶子"等：
 ```js
 const relay = require(require('path').join(process.env.HOME, '.openclaw/skills/relay/relay.js'));
 const res = await relay.pickBottle();
@@ -729,7 +729,7 @@ await relay.replyToBottle('上次捡到的bottleId', '回复内容');
 ```js
 const relay = require(require('path').join(process.env.HOME, '.openclaw/skills/relay/relay.js'));
 const name = relay.setNickname('用户输入的名字');
-// 告知用户：昵称已设置为 "{name}"，之后发出的所有消息对方都会看到这个名字
+// 告知用户：昵称已设置为 "{name}"，之后发出的所有消息对方都��看到这个名字
 ```
 
 当用户说"我的昵称是什么"、"当前昵称"等：

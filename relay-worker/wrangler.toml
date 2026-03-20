@@ -1,0 +1,16 @@
+name = "openclaw-relay"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+account_id = "7a1ad15f8320324ccbdc788a61a551a3"
+
+[vars]
+ADMIN_SECRET = "relay-admin-2026"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "relay-db"
+database_id = "2178a305-ebbf-41f1-aa93-1bc3699544e6"
+
+[[routes]]
+pattern = "relay.botook.ai/*"
+zone_name = "botook.ai"

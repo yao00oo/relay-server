@@ -1,7 +1,7 @@
 ---
 name: relay
 description: "让两个 OpenClaw 实例通过中继服务器互相发送消息。安装后自动初始化并展示使用说明。"
-version: 1.7.4
+version: 1.7.5
 metadata:
   openclaw:
     requires: {}
@@ -58,7 +58,7 @@ for (const item of items) {
 将下方代码块的内容写入 `~/.openclaw/skills/relay/relay.js`，始终覆盖：
 
 ```js
-// relay.js — version 1.7.4
+// relay.js — version 1.7.5
 'use strict';
 
 const http = require('http');
@@ -77,7 +77,7 @@ const REQUESTS_FILE = path.join(SKILL_DIR, 'friend-requests.json');
 const NICKNAME_FILE = path.join(SKILL_DIR, 'nickname.json');
 const PID_FILE = path.join(SKILL_DIR, 'daemon.pid');
 const DAEMON_FILE = path.join(SKILL_DIR, 'relay-daemon.js');
-const SKILL_VERSION = '1.7.4';
+const SKILL_VERSION = '1.7.5';
 
 // ── 工具函数 ────────────────────────────────────────────────────────────────
 
@@ -504,33 +504,58 @@ function contactStats() {
   const requests = readJSON(REQUESTS_FILE, []);
   const friends = readJSON(FRIENDS_FILE, []);
 
-  // 统计每个发件人的消息数（排除系统消息）
-  const counts = {};
+  const SYSTEM_TYPES = new Set(['friend_request', 'friend_accept', 'friend_reject']);
+
+  // 统计每个发件人：消息数、未读数、最近一条时间、昵称
+  const stats = {};
   for (const msg of log) {
     const type = msg.payload && msg.payload.taskType;
-    if (type === 'friend_request' || type === 'friend_accept' || type === 'friend_reject') continue;
-    counts[msg.from] = (counts[msg.from] || 0) + 1;
+    if (SYSTEM_TYPES.has(type)) continue;
+    const id = msg.from;
+    if (!stats[id]) stats[id] = { count: 0, unread: 0, lastTs: 0, nickname: null };
+    stats[id].count++;
+    if (!msg.read) stats[id].unread++;
+    if (msg.ts > stats[id].lastTs) {
+      stats[id].lastTs = msg.ts;
+      const pn = msg.payload && msg.payload.fromNickname;
+      if (pn && pn !== id) stats[id].nickname = pn;
+    }
+  }
+
+  function displayName(id) {
+    return (stats[id] && stats[id].nickname) ? `${stats[id].nickname} (${id})` : id;
+  }
+  function lastTime(id) {
+    const ts = stats[id] && stats[id].lastTs;
+    return ts ? new Date(ts).toLocaleString() : '—';
   }
 
   // 收到的待处理申请
   const pendingIds = new Set(requests.filter(r => r.direction === 'incoming' && r.status === 'pending').map(r => r.id));
 
+  const friendIds = new Set(friends.map(f => f.id));
+
   const friendList = friends.map(f => ({
     id: f.id,
+    name: displayName(f.id),
     addedAt: new Date(f.addedAt).toLocaleString(),
-    messageCount: counts[f.id] || 0,
+    messageCount: (stats[f.id] && stats[f.id].count) || 0,
+    unread: (stats[f.id] && stats[f.id].unread) || 0,
+    lastMessage: lastTime(f.id),
   }));
 
   const pendingList = [...pendingIds].map(id => ({
     id,
-    messageCount: counts[id] || 0,
+    name: displayName(id),
+    messageCount: (stats[id] && stats[id].count) || 0,
+    unread: (stats[id] && stats[id].unread) || 0,
+    lastMessage: lastTime(id),
   }));
 
   // 陌生人：发过消息但不是好友也不是待处理申请
-  const friendIds = new Set(friends.map(f => f.id));
-  const strangerList = Object.entries(counts)
+  const strangerList = Object.entries(stats)
     .filter(([id]) => !friendIds.has(id) && !pendingIds.has(id))
-    .map(([id, messageCount]) => ({ id, messageCount }))
+    .map(([id, s]) => ({ id, name: displayName(id), messageCount: s.count, unread: s.unread, lastMessage: lastTime(id) }))
     .sort((a, b) => b.messageCount - a.messageCount);
 
   return { friends: friendList, pending: pendingList, strangers: strangerList };
@@ -587,20 +612,23 @@ const stats = relay.contactStats();
 // 展示三个分组：
 //
 // 👤 好友（{stats.friends.length} 人）
-// ┌─────────────────────────────────────┐
-// │ ID: xxx  添加时间: ...  消息数: N   │
-// └─────────────────────────────────────┘
+// ┌──────────────────────────────────────────────────────┐
+// │ 昵称(ID)   消息数: N  🔴未读: N  最近: yyyy/M/d ...  │
+// │ 添加时间: ...                                         │
+// └──────────────────────────────────────────────────────┘
 //
 // 📬 待处理好友申请（{stats.pending.length} 条）
-// ┌─────────────────────────────────────┐
-// │ ID: xxx  消息数: N                  │
-// │ → 说 "同意 xxx" 或 "拒绝 xxx"       │
-// └─────────────────────────────────────┘
+// ┌──────────────────────────────────────────────────────┐
+// │ 昵称(ID)   消息数: N  🔴未读: N  最近: yyyy/M/d ...  │
+// │ → 说 "同意 xxx" 或 "拒绝 xxx"                        │
+// └──────────────────────────────────────────────────────┘
 //
 // 👻 陌生人（{stats.strangers.length} 人，按消息数排序）
-// ┌─────────────────────────────────────┐
-// │ ID: xxx  消息数: N                  │
-// └─────────────────────────────────────┘
+// ┌──────────────────────────────────────────────────────┐
+// │ 昵称(ID)   消息数: N  🔴未读: N  最近: yyyy/M/d ...  │
+// └──────────────────────────────────────────────────────┘
+//
+// unread > 0 时显示 🔴 N，否则省略未读字段
 ```
 
 **查看待处理申请**：用户说"好友申请"、"待处理申请"：
